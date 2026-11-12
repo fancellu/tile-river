@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The tile river</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #d4d6d7;
+      }
+      canvas#wall {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        touch-action: none;
+        cursor: pointer;
+      }
+      #hud {
+        position: fixed;
+        left: 0;
+        top: 0;
+        padding: 18px 60px 46px 26px;
+        max-width: 31em;
+        background: radial-gradient(ellipse at 30% 35%, rgba(238, 238, 230, 0.88) 0%, rgba(238, 238, 230, 0.7) 45%, rgba(238, 238, 230, 0) 72%);
+        font-family: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+        color: #1b2f66;
+        text-shadow:
+          0 0 3px rgba(240, 240, 232, 0.95),
+          0 0 9px rgba(240, 240, 232, 0.9),
+          0 0 18px rgba(240, 240, 232, 0.7);
+        pointer-events: none;
+        user-select: none;
+      }
+      #hud h1 {
+        margin: 0;
+        font-size: 25px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      #hud p {
+        margin: 2px 0 0;
+        font-size: 18px;
+        font-weight: 500;
+        line-height: 1.25;
+      }
+      #hud #hint {
+        font-style: italic;
+      }
+      #hud #bar {
+        margin-top: 7px;
+        font-size: 16px;
+      }
+      #hud button {
+        pointer-events: auto;
+        font: inherit;
+        color: inherit;
+        text-shadow: inherit;
+        background: none;
+        border: 0;
+        border-bottom: 1px solid rgba(27, 47, 102, 0.45);
+        padding: 0 1px;
+        margin-right: 14px;
+        cursor: pointer;
+      }
+      #hud button:hover,
+      #hud button:focus-visible {
+        border-bottom-color: #1b2f66;
+        outline: none;
+      }
+      #hud #lvl {
+        margin-right: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="wall"></canvas>
+    <div id="hud">
+      <h1>The tile river</h1>
+      <p id="hint">Join the water from the spring to the sea.</p>
+      <p id="bar">
+        <span id="lvl"></span>
+        <button id="undo" type="button" title="Undo (Z)">Undo</button>
+        <button id="hintb" type="button" title="Hint (H)">Hint</button>
+        <button id="restart" type="button" title="Restart (R)">Restart</button>
+        <button id="sound" type="button">Enable sound</button>
+      </p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
