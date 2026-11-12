@@ -11,13 +11,19 @@ Everything you see is generated in code. Every tile face is painted stroke by st
 ## Play
 
 - **Goal:** join the water from the **spring** (framed, with a fountain) to the **sea** (framed, with waves).
-- **Click** a tile to turn it a quarter turn clockwise. **Right-click** turns it back.
+- **Click** a tile to turn it a quarter turn clockwise. **Right-click** turns it back. On a touch screen, **press and hold** does what a right-click does.
 - **Drag** a tile onto another to swap them.
-- **Right-click** (or **F** while hovering) flips a tile marked with a sun or a moon to its other face.
+- **Right-click** (or press and hold, or **F** while hovering) flips a tile marked with a sun or a moon to its other face.
 - **Click a whirlpool** to carry the eight tiles around it one place round.
-- Framed tiles are set in mortar and cannot move.
+- Framed tiles are set in mortar and cannot move. The river must pass straight through every lock.
+
+The **Rules** link in the top line explains all of this in the game.
 
 When the water joins, the boat sails the route. Windmills turn, fish jump, birds lift, chimneys smoke and a heron flies off. When the boat reaches the sea, a sea creature rolls along the bottom border.
+
+Every turn, swap, flip and whirl counts as a move. The top line shows your moves, the wall's **par** and your best for that wall. Finish in par and the wall says **PERFECT!!** Undo takes a move back; restart sets the count to zero. Best scores are kept in your browser.
+
+Par is the true fewest moves for that wall, by any river, not only the one it was designed around. Every idea a wall shows is needed to reach par: a bridge wall cannot be finished in par without crossing the river, a whirlpool wall without whirling, and so on. `npm run verify-levels` proves both for every wall (see Checks below).
 
 On load the game plays itself in an attract mode, solving walls slowly. Click or press any key to take over at wall 1.
 
@@ -42,12 +48,12 @@ Walls 1–6 each teach one idea and wall 7 brings them together. Walls 8–17 co
 | --- | --- | --- |
 | 1 | The spring | Turning tiles |
 | 2 | The meander | Swapping tiles |
-| 3 | The aqueduct | A bridge carries water over water, so the river may cross itself |
-| 4 | The lock | Locks are fixed, and the boat must pass every one |
+| 3 | The lock | Locks are fixed, and the boat must pass every one |
+| 4 | The aqueduct | A lock above and the sea below force the river to cross itself on a bridge |
 | 5 | The whirlpool | A whirlpool turns the 3 × 3 block around it |
 | 6 | Sun and moon | Tiles with two faces |
 | 7 | The full wall | Everything at once, on a 7 × 5 wall |
-| 8 | The long reach | A long meander: many swaps, many turns |
+| 8 | The long reach | Three locks hold a long river to its winding course |
 | 9 | Two bridges | The river crosses itself twice |
 | 10 | The lock flight | Three locks step the river down the hill |
 | 11 | The mill race | A lock above a whirlpool |
@@ -55,8 +61,8 @@ Walls 1–6 each teach one idea and wall 7 brings them together. Walls 8–17 co
 | 13 | Twin whirlpools | Two whirlpools, each with its own ring |
 | 14 | The polder | The river rings a field, crossing itself and passing two locks |
 | 15 | Moon tide | Most tiles have two faces |
-| 16 | The estuary | A bridge, two locks, a whirlpool and two-faced tiles |
-| 17 | The great wall | The longest river, on an 8 × 6 wall |
+| 16 | The estuary | A bridge, three locks, a whirlpool and two-faced tiles |
+| 17 | The great wall | The longest river: two bridges, five locks and a whirlpool, on an 8 × 6 wall |
 
 <table>
   <tr>
@@ -119,7 +125,9 @@ src/game/               board rules, levels, solver (hint and attract), game con
 src/paint/              brush engine, tile painter, motifs, boat, sea creature, live layer
 src/render/             wall of instanced tiles, glaze/grout/shadow shaders, surface maps
 src/audio.ts            WebAudio sound
-scripts/verify-levels.ts  checks every wall is solvable, starts unsolved and fits the renderer
+scripts/verify-levels.ts  proves every wall: solvable, unsolved at the start, par, every idea needed
+scripts/rivers.ts       the searches behind par and the idea checks
+scripts/design-walls.ts tries scramble seeds for a hand-drawn wall and keeps the ones that pass
 scripts/check.mjs       headless Chrome: screenshots, fps, scripted play, dist check
 docs/                   screenshots for this README
 ```
@@ -127,8 +135,10 @@ docs/                   screenshots for this README
 ### Checks
 
 ```sh
-npm run verify-levels   # each wall: solution reaches the sea through every lock,
-                        # the scrambled start does not, and the hint solver finishes it
+npm run verify-levels   # each wall: solution reaches the sea through every lock, the
+                        # scrambled start does not, the hint solver finishes it, the
+                        # stored par is the proven minimum, and every idea on the wall
+                        # is needed to reach par (takes a few minutes)
 npm run typecheck
 npm run dev             # then, in another shell:
 node scripts/check.mjs play                          # scripted play-through with screenshots
@@ -136,6 +146,10 @@ node scripts/check.mjs fps "?level=7&view=solved"    # frame rate
 node scripts/check.mjs shot name "?view=close"       # one screenshot (name.jpg for JPEG)
 npm run build && node scripts/check.mjs dist         # standalone file: requests, errors, audio
 ```
+
+How par is proven: a tile's turns and flips can happen before or after it is swapped, and whirlpool rings only move by whirling. So the cheapest way to make one given river run can be found exactly, by a branch-and-bound search over which tile ends in each river cell. Every finished wall has some river from the spring to the sea, so the verifier walks every river the tiles could form and keeps the cheapest. It then replays those moves on a fresh wall to confirm they work. On the smallest walls an exhaustive search over every possible move sequence gives the same answer.
+
+The idea checks run the same search with one kind of move taken away (no crossings, no whirling, no flips or no swaps). If the wall can still be finished in par, that idea is decoration, and the check fails. The walls get past it by geometry. For example, a lock directly above a cell, with the spring feeding that cell from the side and the sea below it, leaves the water three sides of one tile to use. A tile carries water through only two sides per pass, so the river must pass twice, and only a bridge allows that. `scripts/design-walls.ts` then tries scramble seeds for a layout like that and keeps the starts that pass.
 
 Screenshots go to `./shots` (set `SHOTS` to change it). The checks use the installed Chrome through `playwright-core`.
 

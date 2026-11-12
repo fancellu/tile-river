@@ -24,7 +24,17 @@ const $ = (id: string) => document.getElementById(id)!;
 game.onHud = (s) => {
   $('hint').textContent = s.hint;
   $('lvl').textContent = s.level;
+  $('score').textContent = s.score;
 };
+game.onResult = (r) => {
+  if (!r.perfect) return;
+  const el = $('perfect');
+  el.hidden = false;
+  el.classList.remove('show');
+  void el.offsetWidth; // restart the animation
+  el.classList.add('show');
+};
+$('perfect').addEventListener('animationend', () => ($('perfect').hidden = true));
 
 const state = view === 'sail' || view === 'solved';
 if (levelParam !== null || state) game.attract = false;
@@ -46,17 +56,22 @@ const ndc = (e: PointerEvent | MouseEvent) => {
   const r = canvas.getBoundingClientRect();
   return [((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)];
 };
-const world = (e: PointerEvent | MouseEvent) => {
+const world = (e: PointerEvent) => {
   const [x, y] = ndc(e);
-  wall.pointer.set(x, y);
+  // the window's reflection follows a mouse; a finger only plays the game
+  if (e.pointerType === 'mouse') wall.pointer.set(x, y);
   return wall.pick(x, y);
 };
 canvas.addEventListener('pointermove', (e) => {
   const w = world(e);
   if (!frozen) game.pointerMove(w.x, w.y);
 });
+// on a touch screen, pressing and holding a tile does what a right-click does
+const HOLD_MS = 450;
+let pressAt = 0;
 canvas.addEventListener('pointerdown', (e) => {
   if (frozen) return;
+  pressAt = performance.now();
   canvas.setPointerCapture(e.pointerId);
   const w = world(e);
   game.pointerMove(w.x, w.y);
@@ -65,10 +80,35 @@ canvas.addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointerup', (e) => {
   if (frozen) return;
   const w = world(e);
-  game.pointerUp(w.x, w.y);
+  const held = e.pointerType !== 'mouse' && performance.now() - pressAt > HOLD_MS;
+  game.pointerUp(w.x, w.y, held);
+  if (e.pointerType !== 'mouse') game.clearHover();
 });
+canvas.addEventListener('pointercancel', () => game.clearHover());
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+// the rules
+const rules = $('rules');
+const rulesBtn = $('rulesb');
+const showRules = (open: boolean) => {
+  rules.hidden = !open;
+  rulesBtn.setAttribute('aria-expanded', String(open));
+  if (open) {
+    $('rules-close').focus({ preventScroll: true });
+    rules.querySelector('.card')!.scrollTop = 0;
+  }
+  else rulesBtn.focus();
+};
+rulesBtn.addEventListener('click', () => showRules(rules.hidden !== false));
+$('rules-close').addEventListener('click', () => showRules(false));
+rules.addEventListener('click', (e) => {
+  if (e.target === rules) showRules(false); // a click outside the card
+});
+
 window.addEventListener('keydown', (e) => {
+  if (!rules.hidden) {
+    if (e.key === 'Escape') showRules(false);
+    return; // the wall does not listen while the rules are open
+  }
   if (frozen || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === ' ') e.preventDefault();
   game.key(e.key);

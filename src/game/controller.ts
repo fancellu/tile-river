@@ -46,6 +46,7 @@ type Undo = { type: 'turn'; id: number; dir: number } | { type: 'swap'; a: numbe
 
 export interface HudState {
   level: string;
+  score: string;
   hint: string;
 }
 
@@ -55,6 +56,11 @@ export class Game {
   painter = new TilePainter();
   live = new Live();
   onHud: (s: HudState) => void = () => {};
+  /** Called once when the player finishes a wall. */
+  onResult: (r: { moves: number; par: number; perfect: boolean }) => void = () => {};
+  moves = 0;
+  private scoring = true; // false when a wall was solved by the ?view= shortcuts
+  private result: { moves: number; par: number; perfect: boolean } | null = null;
 
   levelIndex = -1;
   pending = -1;
@@ -129,6 +135,7 @@ export class Game {
         const y = p.y;
         const a = p.ang;
         p.hover = 0;
+        p.motif = 1; // woken scenery is painted back onto the tile so it leaves with it
         this.tween(p, 0.42, h * 0.28, (k) => {
           p.z = 3.2 * k * k;
           p.y = y - 1.4 * k * k;
@@ -201,6 +208,9 @@ export class Game {
     this.gates.clear();
     this.wakeQueue = [];
     this.undoStack = [];
+    this.moves = 0;
+    this.result = null;
+    this.scoring = true;
     this.tweens = [];
     this.hoverTile = null;
     this.lockNote = false;
@@ -297,7 +307,40 @@ export class Game {
     else if (this.state === 'sail') hint = 'The water joins. The boat sails for the sea.';
     else if (this.state === 'arrived') hint = 'The boat has reached the sea. Click for the next wall.';
     else if (this.lockNote) hint = 'The water reaches the sea, but the boat must pass every lock.';
-    this.onHud({ level: `Wall ${this.levelIndex + 1} of ${LEVELS.length} · ${this.def.name}`, hint });
+    const r = this.result;
+    if (r && (this.state === 'sail' || this.state === 'arrived'))
+      hint = r.perfect
+        ? `Perfect: ${r.moves} ${r.moves === 1 ? 'move' : 'moves'}, as few as the wall allows.`
+        : `Solved in ${r.moves} moves. This wall can be done in ${r.par}.`;
+    const best = this.best(this.levelIndex);
+    const score = this.attract ? '' : `Moves ${this.moves} · Par ${this.def.par}${best !== null ? ` · Best ${best}` : ''}`;
+    this.onHud({ level: `Wall ${this.levelIndex + 1} of ${LEVELS.length} · ${this.def.name}`, score, hint });
+  }
+
+  // ------------------------------------------------------------ best scores (this browser only)
+
+  private bests(): Record<string, number> {
+    try {
+      return JSON.parse(localStorage.getItem('tile-river-best') ?? '{}') as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }
+
+  private best(i: number): number | null {
+    return this.bests()[LEVELS[i].name] ?? null;
+  }
+
+  private saveBest(i: number, moves: number): void {
+    const all = this.bests();
+    const k = LEVELS[i].name;
+    if (all[k] !== undefined && all[k] <= moves) return;
+    all[k] = moves;
+    try {
+      localStorage.setItem('tile-river-best', JSON.stringify(all));
+    } catch {
+      /* storage blocked: the score simply is not remembered */
+    }
   }
 
   // ------------------------------------------------------------ tweens
@@ -483,7 +526,13 @@ export class Game {
       ok = this.whirl(m.tile, m.dir);
       if (ok && record) this.undoStack.push({ type: 'whirl', id: m.tile.id, dir: m.dir });
     }
+    if (ok && record) this.countMove(1);
     return ok;
+  }
+
+  private countMove(n: number): void {
+    this.moves = Math.max(0, this.moves + n);
+    this.hud();
   }
 
   private anyBusy(): boolean {
@@ -495,10 +544,13 @@ export class Game {
     const u = this.undoStack.pop();
     if (!u) return;
     const T = (id: number) => this.board.tiles[id];
-    if (u.type === 'turn') this.turn(T(u.id), -u.dir);
-    else if (u.type === 'swap') this.swap(T(u.a), T(u.b));
-    else if (u.type === 'flip') this.flipTile(T(u.id));
-    else this.whirl(T(u.id), -u.dir);
+    let ok: boolean;
+    if (u.type === 'turn') ok = this.turn(T(u.id), -u.dir);
+    else if (u.type === 'swap') ok = this.swap(T(u.a), T(u.b));
+    else if (u.type === 'flip') ok = this.flipTile(T(u.id));
+    else ok = this.whirl(T(u.id), -u.dir);
+    if (ok) this.countMove(-1); // undo takes the move back
+    else this.undoStack.push(u);
   }
 
   restart(): void {
@@ -515,10 +567,13 @@ export class Game {
       b.cells[t.y * b.w + t.x] = t;
     });
     this.undoStack = [];
+    this.moves = 0;
+    this.result = null;
     this.awake.clear();
     this.gates.clear();
     this.wakeQueue = [];
     this.state = 'play';
+    this.restoreBorderWaves();
     for (const t of b.tiles) {
       const p = this.tp.get(t.id)!;
       p.motif = 1;
@@ -584,6 +639,7 @@ export class Game {
 
   /** Put every tile where the solution has it (for ?view=sail). */
   solveInstant(): void {
+    this.scoring = false;
     const b = this.board;
     for (const t of b.tiles) {
       t.x = t.sol.x;
@@ -714,7 +770,23 @@ export class Game {
     this.wakeAround(this.tr.steps[0].tile);
     this.endDrag();
     if (!this.fast) this.sfx.fanfare();
+    if (!this.attract && this.scoring) {
+      const par = this.def.par;
+      this.result = { moves: this.moves, par, perfect: this.moves <= par };
+      this.saveBest(this.levelIndex, this.moves);
+      if (this.result.perfect && !this.fast) this.sfx.perfect();
+      this.onResult(this.result);
+    }
     this.hud();
+  }
+
+  /** The border waves part for the sea creature; put them all back. */
+  private restoreBorderWaves(): void {
+    for (const p of this.wall.pieces)
+      if (p.role === 1 && p.motif !== 1) {
+        p.motif = 1;
+        this.wall.sync(p);
+      }
   }
 
   private sail(dt: number): void {
@@ -910,6 +982,11 @@ export class Game {
     this.hoverTile = this.drag ? null : this.tileAt(wx, wy);
   }
 
+  /** A finger has left the glass: nothing stays lifted under it. */
+  clearHover(): void {
+    this.hoverTile = null;
+  }
+
   pointerDown(wx: number, wy: number, button: number): void {
     if (this.wakePlayer()) return;
     if (this.state === 'arrived' && this.stateT > 1.2) {
@@ -923,7 +1000,8 @@ export class Game {
     this.press = { tile: t, wx, wy, ox: wx - p.x, oy: wy - p.y, button };
   }
 
-  pointerUp(wx: number, wy: number): void {
+  /** `alt`: the press was held long on a touch screen, which stands in for a right-click. */
+  pointerUp(wx: number, wy: number, alt = false): void {
     const pr = this.press;
     this.press = null;
     if (!pr || this.state !== 'play') {
@@ -936,15 +1014,17 @@ export class Game {
       const u = this.tileAt(wx, wy);
       if (u && u !== t && this.swap(t, u)) {
         this.undoStack.push({ type: 'swap', a: t.id, b: u.id });
+        this.countMove(1);
         return;
       }
       this.settle(t);
       return;
     }
     const k = kindOf(t);
-    const dir = pr.button === 2 ? -1 : 1;
+    const second = pr.button === 2 || alt;
+    const dir = second ? -1 : 1;
     if (k === 'whirl') this.doMove({ type: 'whirl', tile: t, dir });
-    else if (pr.button === 2 && t.faces.length === 2) this.doMove({ type: 'flip', tile: t });
+    else if (second && t.faces.length === 2) this.doMove({ type: 'flip', tile: t });
     else this.doMove({ type: 'turn', tile: t, dir });
   }
 

@@ -123,6 +123,14 @@ export class Sfx {
     [0, 2, 4, 7].forEach((n, k) => this.tone(SCALE[n] * 2, 0.9, 0.09, 'triangle', k * 0.11));
   }
 
+  /** Solved in par: a bright run of bells. */
+  perfect(): void {
+    [4, 5, 7, 9, 11].forEach((n, k) => {
+      this.tone(SCALE[n] * 2, 1.2, 0.07, 'sine', 0.35 + k * 0.09);
+      this.tone(SCALE[n] * 4.02, 0.5, 0.018, 'sine', 0.35 + k * 0.09);
+    });
+  }
+
   /** The sea creature surfaces. */
   creature(): void {
     this.tone(70, 2.2, 0.28, 'sine', 0, 150);

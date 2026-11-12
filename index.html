@@ -25,13 +25,155 @@
         display: block;
         touch-action: none;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      html {
+        -webkit-tap-highlight-color: transparent;
+      }
+      #rules {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: rgba(40, 46, 60, 0.28);
+        overflow-y: auto;
+      }
+      #rules[hidden] {
+        display: none;
+      }
+      #rules .card {
+        max-width: 36em;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 26px 32px 22px;
+        background: #efefe9;
+        color: #1b2f66;
+        border: 4px double #1b2f66;
+        outline: 1px solid rgba(27, 47, 102, 0.35);
+        outline-offset: 6px;
+        box-shadow: 0 18px 50px rgba(20, 24, 36, 0.35);
+        font-family: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+        font-size: 19px;
+        line-height: 1.38;
+      }
+      #rules h2 {
+        margin: 0 0 6px;
+        font-size: 30px;
+        font-weight: 600;
+      }
+      #rules h3 {
+        margin: 16px 0 4px;
+        font-size: 21px;
+        font-weight: 600;
+        font-style: italic;
+      }
+      #rules ul {
+        margin: 0;
+        padding-left: 1.1em;
+      }
+      #rules li {
+        margin: 3px 0;
+      }
+      #rules p {
+        margin: 0;
+      }
+      #rules .keys {
+        font-size: 17px;
+      }
+      #rules b {
+        font-weight: 600;
+      }
+      #rules-close {
+        margin-top: 18px;
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        border-bottom: 1px solid rgba(27, 47, 102, 0.45);
+        padding: 0 1px;
+        cursor: pointer;
+      }
+      #rules-close:hover,
+      #rules-close:focus-visible {
+        border-bottom-color: #1b2f66;
+        outline: none;
+      }
+      @media (max-width: 520px) {
+        #rules .card {
+          padding: 20px 20px 18px;
+          font-size: 17px;
+        }
+      }
+      #perfect {
+        position: fixed;
+        z-index: 10;
+        left: 0;
+        right: 0;
+        top: 30%;
+        text-align: center;
+        font-family: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+        font-style: italic;
+        font-weight: 600;
+        font-size: clamp(56px, 11vw, 150px);
+        letter-spacing: 0.03em;
+        color: #1b2f66;
+        text-shadow:
+          0 0 6px rgba(240, 240, 232, 0.95),
+          0 0 22px rgba(240, 240, 232, 0.9),
+          0 0 48px rgba(240, 240, 232, 0.75);
+        pointer-events: none;
+        user-select: none;
+        opacity: 0;
+      }
+      #perfect.show {
+        animation: perfect 3.4s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+      }
+      @keyframes perfect {
+        0% {
+          opacity: 0;
+          transform: scale(0.82) rotate(-3deg);
+        }
+        14% {
+          opacity: 1;
+          transform: scale(1.04) rotate(-1.5deg);
+        }
+        22% {
+          transform: scale(1) rotate(-2deg);
+        }
+        78% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.02) rotate(-2deg);
+        }
+      }
+      @keyframes perfect-still {
+        0%,
+        85% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #perfect.show {
+          animation: perfect-still 3.4s linear forwards;
+        }
       }
       #hud {
         position: fixed;
         left: 0;
         top: 0;
         padding: 18px 60px 46px 26px;
-        max-width: 31em;
+        max-width: 42em;
         background: radial-gradient(ellipse at 30% 35%, rgba(238, 238, 230, 0.88) 0%, rgba(238, 238, 230, 0.7) 45%, rgba(238, 238, 230, 0) 72%);
         font-family: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
         color: #1b2f66;
@@ -78,21 +220,52 @@
         border-bottom-color: #1b2f66;
         outline: none;
       }
-      #hud #lvl {
+      #hud #lvl,
+      #hud #score {
         margin-right: 16px;
       }
     </style>
   </head>
   <body>
     <canvas id="wall"></canvas>
+    <div id="perfect" role="status" hidden>PERFECT!!</div>
+    <div id="rules" hidden>
+      <section class="card" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+        <h2 id="rules-title">How to play</h2>
+        <p class="lead">Join the water from the spring to the sea. When it runs all the way, a boat sails your river and the painted country wakes as it passes.</p>
+        <h3>Moving tiles</h3>
+        <ul>
+          <li><b>Click</b> a tile to turn it a quarter turn. <b>Right-click</b> turns it back. On a touch screen, <b>press and hold</b> instead of right-clicking.</li>
+          <li><b>Drag</b> a tile onto another to swap the two.</li>
+          <li>Framed tiles (the spring, the sea and the locks) are set in mortar and never move.</li>
+        </ul>
+        <h3>The river</h3>
+        <ul>
+          <li>The river must pass through <b>every lock</b>, straight through, the way the lock lies.</li>
+          <li>A <b>bridge</b> carries the river over itself, so it can cross its own path.</li>
+          <li>Click a <b>whirlpool</b> to carry the eight tiles around it one place round. Those eight tiles cannot be dragged, but they still turn.</li>
+          <li>A tile marked with a <b>sun or a moon</b> has a different picture on its back. Right-click it (or press and hold) to flip it over.</li>
+        </ul>
+        <h3>Moves and par</h3>
+        <ul>
+          <li>Every turn, swap, flip and whirl is one move. <b>Par</b> is the fewest moves that wall can be finished in.</li>
+          <li>Finish in par for a <b>PERFECT!!</b> Undo takes a move back; restart sets the count to zero.</li>
+        </ul>
+        <h3>Keys</h3>
+        <p class="keys">Z undo · H hint · R restart · N next wall · P previous wall · 1–9 and 0 jump to a wall · F or Space acts on the tile under the pointer</p>
+        <button id="rules-close" type="button">Close</button>
+      </section>
+    </div>
     <div id="hud">
       <h1>The tile river</h1>
       <p id="hint">Join the water from the spring to the sea.</p>
       <p id="bar">
         <span id="lvl"></span>
+        <span id="score"></span>
         <button id="undo" type="button" title="Undo (Z)">Undo</button>
         <button id="hintb" type="button" title="Hint (H)">Hint</button>
         <button id="restart" type="button" title="Restart (R)">Restart</button>
+        <button id="rulesb" type="button" aria-expanded="false" aria-controls="rules">Rules</button>
         <button id="sound" type="button">Enable sound</button>
       </p>
     </div>

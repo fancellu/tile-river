@@ -220,7 +220,10 @@ export class Wall {
     this.mesh.instanceMatrix.needsUpdate = true;
     this.aCell.setXY(p.inst, p.cell % ATLAS_COLS, Math.floor(p.cell / ATLAS_COLS));
     this.aSeed.setX(p.inst, p.seed);
-    this.aFx.setXYZW(p.inst, p.wet, p.motif, p.wet2, p.role > 0 ? 1 : 0);
+    // the painted film is laid out in wall space, so it may only show on tiles
+    // lying flat in their place; a tile in the air carries just its own paint
+    const atRest = p.role > 0 && !p.hidden && p.z < 0.006 && p.flip === 0 && p.tiltX === 0 && p.tiltY === 0;
+    this.aFx.setXYZW(p.inst, p.wet, p.motif, p.wet2, atRest ? 1 : 0);
     this.aCell.needsUpdate = this.aSeed.needsUpdate = this.aFx.needsUpdate = true;
   }
 
