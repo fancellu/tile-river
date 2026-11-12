@@ -1,7 +1,7 @@
 import { CELL, INNER, PAD } from '../paint/tilePainter.ts';
 
 export const ATLAS_COLS = 10;
-export const ATLAS_ROWS = 6;
+export const ATLAS_ROWS = 7; // 70 cells: 12 fixtures + up to 58 painted faces
 export const ATLAS_W = ATLAS_COLS * CELL;
 export const ATLAS_H = ATLAS_ROWS * CELL;
 

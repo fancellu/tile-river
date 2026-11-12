@@ -13,6 +13,8 @@ import {
   trace,
 } from './tiles.ts';
 
+// Walls 1-6 each teach one idea, wall 7 combines them, and walls 8-17 are
+// harder combinations ending on the largest wall.
 // Each wall is written by hand in its solved state. A cell is a letter and a
 // quarter-turn count:
 //   S spring (flows out south at 0)   E sea (opens north at 0)
@@ -74,6 +76,129 @@ export const LEVELS: LevelDef[] = [
       'G0 G0 G0 G0 G0 G0 E0',
     ],
     scramble: { turn: true, swaps: 4, flip: true, whirl: 1, seed: 79 },
+  },
+  // Walls 8-17 combine the ideas taught above on larger walls.
+  {
+    name: 'The long reach',
+    hint: 'A long river needs many tiles. Swap the runs and bends into their places.',
+    rows: [
+      'S3 I1 I1 I1 I1 L2',
+      'G0 L1 I1 I1 I1 L3',
+      'G0 L0 I1 I1 I1 L2',
+      'G0 G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 6, flip: false, whirl: 0, seed: 101 },
+  },
+  {
+    name: 'Two bridges',
+    hint: 'This river crosses itself twice. Each crossing needs a bridge.',
+    rows: [
+      'G0 L1 L2 G0 E2',
+      'S3 B0 L3 L1 L3',
+      'G0 L0 I1 B0 L2',
+      'G0 G0 G0 L0 L3',
+      'G0 G0 G0 G0 G0',
+    ],
+    scramble: { turn: true, swaps: 4, flip: false, whirl: 0, seed: 113 },
+  },
+  {
+    name: 'The lock flight',
+    hint: 'Three locks step the river down the hill. The boat must pass all three.',
+    rows: [
+      'S0 G0 G0 G0 G0',
+      'L0 K1 L2 G0 G0',
+      'G0 G0 K0 G0 G0',
+      'G0 G0 L0 K1 L2',
+      'G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 5, flip: false, whirl: 0, seed: 127 },
+  },
+  {
+    name: 'The mill race',
+    hint: 'A lock stands above the whirlpool. Turn the race until it runs to the sea.',
+    rows: [
+      'S3 I1 I1 L2 G0 G0',
+      'G0 G0 G0 K0 G0 G0',
+      'G0 G0 G0 I0 G0 G0',
+      'G0 G0 G0 W0 G0 G0',
+      'G0 G0 G0 L0 I1 E3',
+    ],
+    scramble: { turn: true, swaps: 3, flip: false, whirl: 1, seed: 131 },
+  },
+  {
+    name: 'Night crossing',
+    hint: 'One of the two-faced tiles hides a bridge on its other face.',
+    rows: [
+      'S0 G0 G0 G0 G0',
+      'I0 G0 L1 L2 G0',
+      'L0 D1IL D0BI L3 G0',
+      'G0 G0 L0 D1IL L2',
+      'G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 2, flip: true, whirl: 0, seed: 149 },
+  },
+  {
+    name: 'Twin whirlpools',
+    hint: 'Two whirlpools, each carrying its own ring of eight tiles.',
+    rows: [
+      'S0 G0 G0 G0 G0 G0 G0',
+      'I0 G0 G0 G0 G0 G0 G0',
+      'L0 W1 I1 I1 I1 W1 L2',
+      'G0 G0 G0 G0 G0 G0 I0',
+      'G0 G0 G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 2, flip: false, whirl: 1, seed: 151 },
+  },
+  {
+    name: 'The polder',
+    hint: 'The river rings a field, crossing itself once and passing two locks.',
+    rows: [
+      'G0 G0 L1 I1 I1 L2',
+      'S3 I1 B0 I1 L2 I0',
+      'G0 G0 K0 G0 K0 I0',
+      'G0 G0 I0 G0 I0 I0',
+      'G0 G0 L0 I1 L3 I0',
+      'G0 G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 6, flip: false, whirl: 0, seed: 163 },
+  },
+  {
+    name: 'Moon tide',
+    hint: 'Most tiles here have two faces. Choose the right face for each.',
+    rows: [
+      'S0 G0 G0 G0 G0 G0',
+      'L0 D1IL D1IL D2LI G0 G0',
+      'G0 G0 G0 D0IL G0 G0',
+      'G0 D0GL G0 L0 D1IL L2',
+      'G0 G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 3, flip: true, whirl: 0, seed: 173 },
+  },
+  {
+    name: 'The estuary',
+    hint: 'A bridge, two locks, a whirlpool and two-faced tiles on one wall.',
+    rows: [
+      'G0 L1 I1 I1 I1 I1 L2',
+      'S3 B0 I1 K1 L2 G0 I0',
+      'G0 I0 G0 G0 I0 G0 I0',
+      'G0 D0IL G0 G0 W0 G0 K0',
+      'G0 I0 G0 G0 I0 G0 I0',
+      'G0 L0 D1IL I1 L3 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 5, flip: true, whirl: 1, seed: 181 },
+  },
+  {
+    name: 'The great wall',
+    hint: 'The longest river of all. Bring the boat from the spring to the sea.',
+    rows: [
+      'S0 G0 G0 G0 G0 G0 G0 G0',
+      'D0IL G0 L1 L2 G0 L1 K1 L2',
+      'L0 D1IL B0 L3 G0 I0 G0 I0',
+      'G0 G0 K0 G0 G0 W0 G0 D0IL',
+      'G0 D0GI L0 D1IL I1 L3 G0 I0',
+      'G0 G0 G0 G0 G0 G0 G0 E0',
+    ],
+    scramble: { turn: true, swaps: 6, flip: true, whirl: 1, seed: 191 },
   },
 ];
 

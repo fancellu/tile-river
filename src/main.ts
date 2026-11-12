@@ -5,7 +5,7 @@ import { Wall } from './render/wall.ts';
 
 // URL controls:
 //   ?t=<seconds>   run the (deterministic) simulation to that time and freeze it
-//   ?level=<1-7>   start on that wall as the player, no attract mode
+//   ?level=<1-17>  start on that wall as the player, no attract mode
 //   ?view=wall | close | raking   camera
 //   ?view=sail     the wall solved, the boat setting out
 //   ?view=solved   the boat arrived, the whole wall awake

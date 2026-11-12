@@ -26,17 +26,17 @@ On load the game plays itself in an attract mode, solving walls slowly. Click or
 | Z or Backspace | Undo |
 | H | Hint: the next wrong tile lifts and shows its move |
 | R | Restart the wall |
-| N | Next wall |
-| 1–7 | Jump to a wall |
+| N / P | Next / previous wall |
+| 1–9, 0 | Jump to walls 1–9, or 10 |
 | F or Space | Turn, flip or whirl the tile under the pointer |
 
 Sound starts muted. Click **Enable sound** to hear it. All sound is synthesised with WebAudio.
 
 ![The boat waits in the first lock while its gates open](docs/sail.jpg)
 
-## The seven walls
+## The seventeen walls
 
-Each wall teaches one idea. The last one uses all of them.
+Walls 1–6 each teach one idea and wall 7 brings them together. Walls 8–17 combine them on larger walls, ending on the largest.
 
 | # | Wall | Idea |
 | --- | --- | --- |
@@ -47,6 +47,16 @@ Each wall teaches one idea. The last one uses all of them.
 | 5 | The whirlpool | A whirlpool turns the 3 × 3 block around it |
 | 6 | Sun and moon | Tiles with two faces |
 | 7 | The full wall | Everything at once, on a 7 × 5 wall |
+| 8 | The long reach | A long meander: many swaps, many turns |
+| 9 | Two bridges | The river crosses itself twice |
+| 10 | The lock flight | Three locks step the river down the hill |
+| 11 | The mill race | A lock above a whirlpool |
+| 12 | Night crossing | A two-faced tile hides a bridge |
+| 13 | Twin whirlpools | Two whirlpools, each with its own ring |
+| 14 | The polder | The river rings a field, crossing itself and passing two locks |
+| 15 | Moon tide | Most tiles have two faces |
+| 16 | The estuary | A bridge, two locks, a whirlpool and two-faced tiles |
+| 17 | The great wall | The longest river, on an 8 × 6 wall |
 
 <table>
   <tr>
@@ -79,11 +89,11 @@ Useful for screenshots and for looking at exact moments:
 | Parameter | Effect |
 | --- | --- |
 | `?t=<seconds>` | Runs the deterministic simulation to that time and freezes it |
-| `?level=<1-7>` | Starts on that wall as the player, with no attract mode |
+| `?level=<1-17>` | Starts on that wall as the player, with no attract mode |
 | `?view=close` | Low close-up camera |
 | `?view=raking` | Raking camera across the glaze |
-| `?view=sail` | The wall solved, the boat setting out |
-| `?view=solved` | The boat arrived and the whole wall awake |
+| `?view=sail` | The wall solved, the boat setting out (the last wall unless `?level` is given) |
+| `?view=solved` | The boat arrived and the whole wall awake (likewise) |
 
 For example: `?level=7&view=solved&t=2.4` gives the image at the top of this page.
 
@@ -109,7 +119,7 @@ src/game/               board rules, levels, solver (hint and attract), game con
 src/paint/              brush engine, tile painter, motifs, boat, sea creature, live layer
 src/render/             wall of instanced tiles, glaze/grout/shadow shaders, surface maps
 src/audio.ts            WebAudio sound
-scripts/verify-levels.ts  checks every wall is solvable and starts unsolved
+scripts/verify-levels.ts  checks every wall is solvable, starts unsolved and fits the renderer
 scripts/check.mjs       headless Chrome: screenshots, fps, scripted play, dist check
 docs/                   screenshots for this README
 ```

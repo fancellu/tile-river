@@ -976,11 +976,14 @@ export class Game {
   key(k: string): void {
     if (k === 'Shift' || k === 'Control' || k === 'Alt' || k === 'Meta' || k === 'Tab') return;
     if (this.wakePlayer()) return;
-    if (k >= '1' && k <= String(LEVELS.length)) this.loadLevel(Number(k) - 1);
+    if (k.length === 1 && k >= '0' && k <= '9') {
+      const i = k === '0' ? 9 : Number(k) - 1; // 1-9 walls 1-9, 0 wall 10
+      if (i < LEVELS.length) this.loadLevel(i);
+    } else if (k === 'p' || k === 'P') this.loadLevel((this.pending - 1 + LEVELS.length) % LEVELS.length);
     else if (k === 'z' || k === 'Z' || k === 'Backspace') this.undo();
     else if (k === 'h' || k === 'H') this.showHint();
     else if (k === 'r' || k === 'R') this.restart();
-    else if (k === 'n' || k === 'N') this.loadLevel((this.levelIndex + 1) % LEVELS.length);
+    else if (k === 'n' || k === 'N') this.loadLevel((this.pending + 1) % LEVELS.length); // pending: the wall asked for, even mid-transition
     else if ((k === 'f' || k === 'F' || k === ' ') && this.hoverTile && this.state === 'play' && !this.hoverTile.busy) {
       const t = this.hoverTile;
       if (t.faces.length === 2) this.doMove({ type: 'flip', tile: t });
