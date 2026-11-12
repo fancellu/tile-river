@@ -4,6 +4,7 @@ import { HW, POND, channel, motifSpots, rotPt } from '../paint/geom.ts';
 import { Live } from '../paint/liveLayer.ts';
 import { drawBoat, drawCreature, drawMotif } from '../paint/motifs.ts';
 import { type FaceSpec, TilePainter } from '../paint/tilePainter.ts';
+import type { QualitySettings } from '../quality.ts';
 import type { Piece, Wall } from '../render/wall.ts';
 import { LEVELS, type LevelDef, makeBoard } from './levels.ts';
 import { type Move, nextMove } from './solver.ts';
@@ -54,7 +55,11 @@ export class Game {
   wall: Wall;
   sfx: Sfx;
   painter = new TilePainter();
-  live = new Live();
+  live: Live;
+  /** The next film picture, painted a few milliseconds per frame, then shown whole. */
+  private film: Generator<void, void, void> | null = null;
+  private filmBudgetMs = 6;
+  private awakeSeconds = Infinity;
   onHud: (s: HudState) => void = () => {};
   /** Called once when the player finishes a wall. */
   onResult: (r: { moves: number; par: number; perfect: boolean }) => void = () => {};
@@ -99,9 +104,12 @@ export class Game {
   private liveDirty = true;
   private lockNote = false;
 
-  constructor(wall: Wall, sfx: Sfx) {
+  constructor(wall: Wall, sfx: Sfx, quality: QualitySettings) {
     this.wall = wall;
     this.sfx = sfx;
+    this.live = new Live(quality);
+    this.filmBudgetMs = quality.filmBudgetMs;
+    this.awakeSeconds = quality.awakeSeconds;
     // the lasting tiles of the wall
     for (let v = 0; v < 6; v++) wall.uploadCell(FIX_SURROUND + v, this.painter.fixture('surround', v));
     for (let v = 0; v < 4; v++) wall.uploadCell(FIX_BORDER + v, this.painter.fixture('border', v));
@@ -290,6 +298,7 @@ export class Game {
       };
     });
 
+    this.film = null; // a picture half painted for the old wall is dropped
     this.live.resize(b.w + 2, b.h + 2);
     this.wall.uniforms.uLive.value = this.live.tex;
     this.wall.uniforms.uLiveRect.value.set(this.X0 - 1.5, this.Y0 + 1.5, 1 / (b.w + 2), 1 / (b.h + 2));
@@ -812,7 +821,9 @@ export class Game {
         bt.moving = false;
         this.state = 'arrived';
         this.stateT = 0;
-        for (const t of this.board.tiles) if (!this.awake.has(t.id) && !this.wakeQueue.includes(t)) this.wakeQueue.push(t);
+        // the whole wall wakes; on a weak machine the scenery near the boat is enough
+        if (this.awakeSeconds === Infinity)
+          for (const t of this.board.tiles) if (!this.awake.has(t.id) && !this.wakeQueue.includes(t)) this.wakeQueue.push(t);
         if (!this.fast) this.sfx.creature();
         this.hud();
       } else {
@@ -830,7 +841,21 @@ export class Game {
 
   // ------------------------------------------------------------ the painted film
 
-  private drawLive(): void {
+  /** Change the level of detail of the painted film at run time. */
+  setQuality(q: QualitySettings): void {
+    this.filmBudgetMs = q.filmBudgetMs;
+    this.awakeSeconds = q.awakeSeconds;
+    this.live.setQuality(q);
+    this.film = null;
+    if (this.board) {
+      this.live.resize(this.board.w + 2, this.board.h + 2);
+      this.wall.uniforms.uLive.value = this.live.tex;
+    }
+    this.liveDirty = true;
+  }
+
+  /** One film picture; yields between pieces so the work can be spread over frames. */
+  private *paintFilm(): Generator<void, void, void> {
     const b = this.live.begin(this.frame);
     const f = this.frame;
     const time = this.time;
@@ -883,12 +908,13 @@ export class Game {
           }
         u.done();
       }
+      if (k === 'spring' || k === 'sea' || k === 'whirl' || k === 'lock') yield;
     }
     // wavelets run down every joined channel
     const flowing = this.state === 'play' || this.state === 'sail' || this.state === 'arrived';
-    this.tr.steps.forEach((s, n) => {
+    for (const [n, s] of this.tr.steps.entries()) {
       const fl = this.flow.get(s.tile.id);
-      if (!flowing || !fl || fl[this.chan(s)] < 1 || s.tile.busy) return;
+      if (!flowing || !fl || fl[this.chan(s)] < 1 || s.tile.busy) continue;
       for (let j = 0; j < 2; j++) {
         const tt = (f * 0.055 + j * 0.5 + hash01(n, 3)) % 1;
         const a = this.stepPoint(s, Math.max(0, tt - 0.035));
@@ -903,7 +929,8 @@ export class Game {
         const my = (a[1] + c[1]) / 2 + ny * lat;
         b.line([[a[0] + nx * (lat + 0.012), a[1] + ny * (lat + 0.012)], [mx - nx * 0.012, my - ny * 0.012], [c[0] + nx * (lat + 0.01), c[1] + ny * (lat + 0.01)]], 0.8, 0.85, { dep: 0.4 });
       }
-    });
+      if (n % 4 === 3) yield;
+    }
     // scenery that the boat has woken
     for (const [id, t0] of this.awake) {
       const t = B.tiles[id];
@@ -911,11 +938,13 @@ export class Game {
       for (const m of motifSpots(sp.kind, sp.seed, sp.variant, sp.mark)) {
         const w = rotPt(m.x, m.y, t.rot);
         drawMotif(b, m.type, t.x + 1 + w[0], t.y + 1 + w[1], m.r, m.seed, { t: time - t0, f });
+        yield;
       }
     }
     if (this.state === 'sail' || this.state === 'arrived') {
       const bt = this.boat;
       drawBoat(b, bt.x, bt.y + 0.03, 0.2, bt.facing, time, f, bt.moving);
+      yield;
     }
     if (this.state === 'arrived') {
       // the creature rolls along the bottom border, right to left, then back
@@ -1144,16 +1173,40 @@ export class Game {
       this.frame = frame;
       if (this.state === 'play' || this.state === 'sail' || this.state === 'arrived') this.flowTick();
       if (this.wakeQueue.length && frame % 2 === 0) this.wake(this.wakeQueue.shift()!);
+      // on a weak machine, woken scenery settles back into its painted pose after a while
+      if (this.awakeSeconds !== Infinity)
+        for (const [id, t0] of this.awake)
+          if (this.time - t0 > this.awakeSeconds) {
+            this.awake.delete(id);
+            const p = this.tp.get(id);
+            if (p) {
+              p.motif = 1;
+              this.wall.sync(p);
+            }
+          }
       this.liveDirty = true;
     }
   }
 
   /** Draw the painted film if a new picture is due, and place the shadows. */
   present(): void {
-    if (this.liveDirty && !this.fast) {
-      this.liveDirty = false;
+    if (!this.fast) {
+      // a new picture is due: start painting it behind the one on show
+      if (!this.film && this.liveDirty) {
+        this.liveDirty = false;
+        this.film = this.paintFilm();
+      }
+      if (this.film) {
+        const t0 = performance.now();
+        for (;;) {
+          if (this.film.next().done) {
+            this.film = null;
+            break;
+          }
+          if (performance.now() - t0 > this.filmBudgetMs) break;
+        }
+      }
       this.wall.uniforms.uLive.value = this.live.tex;
-      this.drawLive();
     }
     this.wall.castShadows(this.wall.pieces);
   }

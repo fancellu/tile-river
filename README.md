@@ -100,6 +100,7 @@ Useful for screenshots and for looking at exact moments:
 | `?view=raking` | Raking camera across the glaze |
 | `?view=sail` | The wall solved, the boat setting out (the last wall unless `?level` is given) |
 | `?view=solved` | The boat arrived and the whole wall awake (likewise) |
+| `?quality=low` or `?quality=high` | Force a level of detail (see below) |
 
 For example: `?level=7&view=solved&t=2.4` gives the image at the top of this page.
 
@@ -113,6 +114,19 @@ The look follows a fixed set of rules for the medium:
 - **Light from a room.** The glaze reflects a window. The reflection slides across the wall as the pointer moves and breaks at every tile, because each tile has its own tilt. A patch of low sun with leaf shadows drifts across the wall.
 - **A painted film.** Anything that moves in paint (the boat, wavelets, waking scenery, the sea creature) is redrawn 10 times a second from alternating hands. The tiles move as physical objects: they lift, turn and clack back into place.
 
+### Phones and weaker machines
+
+There are two levels of detail, and the game picks one at load. Phones and tablets (a touch screen and no mouse), and machines with four or fewer cores or 4 GB or less of memory, start on **low**; everything else starts on **high**. A high machine that still cannot keep up after lowering its resolution drops to low by itself.
+
+| | High | Low |
+| --- | --- | --- |
+| Pixel density | up to 2× | up to 1.5× |
+| Glaze and grout noise | 4 layers | 2 layers |
+| Painted film | 256 px per tile, full brush strokes | 128 px per tile, strokes without the bleed halo, pooled ends and ink fade |
+| Woken scenery | stays animated | settles back after 5 seconds; the whole wall does not wake at the end |
+
+On both levels the painted film (the boat, ripples and woken scenery) is painted a few milliseconds per frame on a second canvas and swapped in when finished. A slow device shows fewer film pictures per second instead of stuttering. The resolution also drops by itself while frames run long. On a phone held sideways the HUD becomes a column at the left and the wall sits beside it; on any screen the camera frames the wall clear of the HUD.
+
 ### Project layout
 
 ```text
@@ -121,6 +135,7 @@ favicon.svg             tab icon (inlined into the build, also served as a file)
 public/                 favicon.ico and apple-touch-icon.png, made by scripts/make-icons.mjs
 vite.config.ts          single-file build
 src/main.ts             boot, URL parameters, input, frame loop, dynamic resolution
+src/quality.ts          the two levels of detail and how one is chosen
 src/game/               board rules, levels, solver (hint and attract), game controller
 src/paint/              brush engine, tile painter, motifs, boat, sea creature, live layer
 src/render/             wall of instanced tiles, glaze/grout/shadow shaders, surface maps

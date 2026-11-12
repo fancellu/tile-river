@@ -57,6 +57,7 @@ export class Brush {
   rng: Rng;
   px: number; // device pixels per unit, for sampling density
   lw: number; // one "hair" of line weight in current units
+  lite = false; // skip the bleed halo and the pooled ends (cheaper, for the film on weak machines)
 
   constructor(ctx: CanvasRenderingContext2D, rng: Rng, px: number, lw = 0.0145) {
     this.ctx = ctx;
@@ -73,7 +74,9 @@ export class Brush {
     c.translate(x, y);
     if (rot) c.rotate(rot);
     c.scale(r * flipX, r);
-    return new Brush(c, this.rng, this.px * r, this.lw / r);
+    const b = new Brush(c, this.rng, this.px * r, this.lw / r);
+    b.lite = this.lite;
+    return b;
   }
   done(): void {
     this.ctx.restore();
@@ -179,7 +182,7 @@ export class Brush {
     const x1 = cxs[n];
     const y1 = cys[n];
     let fill: string | CanvasGradient;
-    if (Math.hypot(x1 - x0, y1 - y0) > L * 0.3) {
+    if (!this.lite && Math.hypot(x1 - x0, y1 - y0) > L * 0.3) {
       const g = c.createLinearGradient(x0, y0, x1, y1);
       g.addColorStop(0, `rgba(0,0,0,${a})`);
       g.addColorStop(0.55, `rgba(0,0,0,${a * (1 - dep * 0.35)})`);
@@ -187,14 +190,16 @@ export class Brush {
       fill = g;
     } else fill = `rgba(0,0,0,${a * (1 - dep * 0.3)})`;
     // soft bleed of cobalt into the glaze, then the stroke itself
-    c.fillStyle = `rgba(0,0,0,${a * 0.16})`;
-    poly(2.1);
-    c.fill();
+    if (!this.lite) {
+      c.fillStyle = `rgba(0,0,0,${a * 0.16})`;
+      poly(2.1);
+      c.fill();
+    }
     c.fillStyle = fill;
     poly(1);
     c.fill();
     // pooling where the brush touches down and where it lifts
-    if (width * this.px > 1.1) {
+    if (!this.lite && width * this.px > 1.1) {
       c.fillStyle = `rgba(0,0,0,${a * 0.5})`;
       c.beginPath();
       c.arc(x0, y0, width * 0.52, 0, 6.3);
@@ -250,10 +255,12 @@ export class Brush {
   dot(x: number, y: number, r = 1, a = 0.85): void {
     const c = this.ctx;
     const rr = r * this.lw * (0.85 + 0.3 * this.rng());
-    c.fillStyle = `rgba(0,0,0,${a * 0.2})`;
-    c.beginPath();
-    c.arc(x, y, rr * 1.7, 0, 6.3);
-    c.fill();
+    if (!this.lite) {
+      c.fillStyle = `rgba(0,0,0,${a * 0.2})`;
+      c.beginPath();
+      c.arc(x, y, rr * 1.7, 0, 6.3);
+      c.fill();
+    }
     c.fillStyle = `rgba(0,0,0,${a})`;
     c.beginPath();
     c.ellipse(x, y, rr, rr * (0.7 + 0.3 * this.rng()), this.rng() * 3, 0, 6.3);

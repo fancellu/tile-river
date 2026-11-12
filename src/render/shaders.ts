@@ -20,7 +20,10 @@ vec2 hash21(float n){ return fract(sin(vec2(n*127.1, n*269.5+3.1))*43758.5453); 
 float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx)*.1031); p3 += dot(p3, p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
 float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   return mix(mix(hash12(i),hash12(i+vec2(1,0)),f.x), mix(hash12(i+vec2(0,1)),hash12(i+vec2(1,1)),f.x), f.y); }
-float fbm(vec2 p){ float a=.5, s=0.; for(int i=0;i<4;i++){ s+=a*vnoise(p); p=p*2.03+17.1; a*=.5; } return s; }
+#ifndef FBM_OCT
+#define FBM_OCT 4
+#endif
+float fbm(vec2 p){ float a=.5, s=0.; for(int i=0;i<FBM_OCT;i++){ s+=a*vnoise(p); p=p*2.03+17.1; a*=.5; } return s; }
 float sdBox(vec2 p, vec2 b, float r){ vec2 q=abs(p)-b+r; return length(max(q,0.))+min(max(q.x,q.y),0.)-r; }
 
 // low sun through a second window: a slanted patch with the shadow of the
@@ -192,9 +195,11 @@ void main(){
     alb *= 1. - 0.62*crack;
     crackSide = sign(cd);
   }
-  vec3 clay = vec3(0.64,0.47,0.33)*(0.7+0.6*fbm(p*44.+vSeed));
-  alb = mix(alb, clay, chip);
-  alb = mix(alb, vec3(0.9), chip*(1.-chip)*2.2);
+  if (chip > 0.) {
+    vec3 clay = vec3(0.64,0.47,0.33)*(0.7+0.6*fbm(p*44.+vSeed));
+    alb = mix(alb, clay, chip);
+    alb = mix(alb, vec3(0.9), chip*(1.-chip)*2.2);
+  }
 
   // normal
   vec2 nxy = (sf.rg-0.5)*0.26;
@@ -205,7 +210,7 @@ void main(){
   vec2 gdir = (q.x > 0. && q.y > 0.) ? normalize(q)*sign(p) : (q.x > q.y ? vec2(sign(p.x),0.) : vec2(0.,sign(p.y)));
   nxy += gdir * smoothstep(0.05, 0.0, e)*0.6;
   nxy -= sf.a * 0.25;
-  nxy = mix(nxy, (vec2(fbm(p*31.+vSeed), fbm(p*31.+vSeed+9.))-.5)*1.5, chip);
+  if (chip > 0.) nxy = mix(nxy, (vec2(fbm(p*31.+vSeed), fbm(p*31.+vSeed+9.))-.5)*1.5, chip);
   vec3 N = normalize(vT*nxy.x + vB*nxy.y + normalize(vN));
 
   vec3 col = alb * (keyLight(vWorld, N) + ambient(N));

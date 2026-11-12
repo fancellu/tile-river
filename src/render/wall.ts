@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CELL } from '../paint/tilePainter.ts';
+import { type Quality, SETTINGS } from '../quality.ts';
 import { ATLAS_COLS, ATLAS_H, ATLAS_W, groutFrag, groutVert, shadowFrag, shadowVert, tileFrag, tileVert } from './shaders.ts';
 import { makeSurfaceMap } from './surfaceMaps.ts';
 
@@ -63,10 +64,17 @@ export class Wall {
   view = 'wall';
   private baseRatio = 1;
   scale = 1;
+  quality: Quality;
+  private materials: THREE.ShaderMaterial[] = [];
+  /** How much of the window the HUD covers: a band at the top, or a column at the left. */
+  private reserveTop = 0;
+  private reserveLeft = 0;
+  private lastFrame: [number, number, number, number] | null = null;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, quality: Quality = 'high') {
+    this.quality = quality;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.baseRatio = Math.min(window.devicePixelRatio || 1, 2);
+    this.baseRatio = Math.min(window.devicePixelRatio || 1, SETTINGS[quality].maxPixelRatio);
     this.renderer.setPixelRatio(this.baseRatio);
 
     this.atlas = new THREE.DataTexture(new Uint8Array(ATLAS_W * ATLAS_H * 4), ATLAS_W, ATLAS_H, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -126,15 +134,16 @@ export class Wall {
     geo.setAttribute('aCell', this.aCell);
     geo.setAttribute('aSeed', this.aSeed);
     geo.setAttribute('aFx', this.aFx);
-    const mat = new THREE.ShaderMaterial({ vertexShader: tileVert, fragmentShader: tileFrag, uniforms: this.uniforms, side: THREE.DoubleSide });
+    const defines = { FBM_OCT: SETTINGS[quality].fbmOctaves };
+    const mat = new THREE.ShaderMaterial({ vertexShader: tileVert, fragmentShader: tileFrag, uniforms: this.uniforms, side: THREE.DoubleSide, defines: { ...defines } });
+    this.materials.push(mat);
     this.mesh = new THREE.InstancedMesh(geo, mat, count);
     this.mesh.frustumCulled = false;
     this.scene.add(this.mesh);
 
-    const grout = new THREE.Mesh(
-      new THREE.PlaneGeometry(GW + 40, GH + 40),
-      new THREE.ShaderMaterial({ vertexShader: groutVert, fragmentShader: groutFrag, uniforms: this.uniforms }),
-    );
+    const groutMat = new THREE.ShaderMaterial({ vertexShader: groutVert, fragmentShader: groutFrag, uniforms: this.uniforms, defines: { ...defines } });
+    this.materials.push(groutMat);
+    const grout = new THREE.Mesh(new THREE.PlaneGeometry(GW + 40, GH + 40), groutMat);
     grout.position.z = -0.03;
     this.scene.add(grout);
 
@@ -255,16 +264,50 @@ export class Wall {
 
   /** Aim the camera at a panel of w x h tiles (plus its border) centred on (cx, cy). */
   frame(cx: number, cy: number, w: number, h: number, snap = false): void {
+    this.lastFrame = [cx, cy, w, h];
     const aspect = this.camera.aspect;
     const tan = Math.tan((this.camera.fov * Math.PI) / 360);
     const needH = h + 2 + 1.15;
     const needW = w + 2 + 1.3;
-    this.goalDist = Math.max(needH / 2 / tan, needW / 2 / (tan * aspect));
-    this.goalTarget.set(cx, cy + 0.2);
+    // fit the panel below the HUD, or beside it when that gives clearly bigger tiles
+    // (a phone held sideways), and centre it in the space that is left
+    const below = Math.max(needH / 2 / (tan * (1 - this.reserveTop)), needW / 2 / (tan * aspect));
+    const beside = Math.max(needH / 2 / tan, needW / 2 / (tan * aspect * (1 - this.reserveLeft)));
+    if (beside < below * 0.85) {
+      this.goalDist = beside;
+      const viewW = 2 * beside * tan * aspect;
+      this.goalTarget.set(cx - (viewW * this.reserveLeft) / 2, cy + 0.1);
+    } else {
+      this.goalDist = below;
+      const viewH = 2 * below * tan;
+      this.goalTarget.set(cx, cy + 0.1 + (viewH * this.reserveTop) / 2);
+    }
     if (snap) {
       this.dist = this.goalDist;
       this.target.copy(this.goalTarget);
     }
+  }
+
+  /** Tell the camera how far the HUD reaches down from the top and in from the left (fractions of the window). */
+  setReserve(top: number, left: number): void {
+    const t = Math.max(0, Math.min(0.6, top));
+    const l = Math.max(0, Math.min(0.6, left));
+    if (Math.abs(t - this.reserveTop) < 0.005 && Math.abs(l - this.reserveLeft) < 0.005) return;
+    this.reserveTop = t;
+    this.reserveLeft = l;
+    if (this.lastFrame) this.frame(...this.lastFrame);
+  }
+
+  /** Switch the level of detail at run time (recompiles the two wall shaders once). */
+  setQuality(q: Quality): void {
+    if (q === this.quality) return;
+    this.quality = q;
+    for (const m of this.materials) {
+      m.defines = { ...m.defines, FBM_OCT: SETTINGS[q].fbmOctaves };
+      m.needsUpdate = true;
+    }
+    this.baseRatio = Math.min(window.devicePixelRatio || 1, SETTINGS[q].maxPixelRatio);
+    this.setScale(1);
   }
 
   setScale(s: number): void {
@@ -279,6 +322,7 @@ export class Wall {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    if (this.lastFrame) this.frame(...this.lastFrame); // a turned phone needs a new framing
     const s = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     (this.uniforms.uRes.value as THREE.Vector2).copy(s);
   }

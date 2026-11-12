@@ -220,6 +220,44 @@
         border-bottom-color: #1b2f66;
         outline: none;
       }
+      @media (max-height: 560px), (max-width: 600px) {
+        #hud {
+          padding: 10px 28px 26px 14px;
+        }
+        #hud h1 {
+          font-size: 19px;
+        }
+        #hud p {
+          font-size: 15px;
+        }
+        #hud #bar {
+          margin-top: 3px;
+          font-size: 14.5px;
+        }
+        #hud button {
+          margin-right: 10px;
+        }
+        #hud #lvl,
+        #hud #score {
+          margin-right: 10px !important;
+        }
+      }
+      /* a phone held sideways: the HUD becomes a narrow column and the wall sits beside it */
+      @media (max-height: 500px) and (orientation: landscape) {
+        #hud {
+          max-width: 12.5em;
+          padding-right: 18px;
+        }
+        #hud #lvl,
+        #hud #score {
+          display: block;
+        }
+      }
+      @media (pointer: coarse) {
+        #hud button {
+          padding: 4px 1px;
+        }
+      }
       #hud #lvl,
       #hud #score {
         margin-right: 16px;

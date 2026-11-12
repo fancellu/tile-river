@@ -2,6 +2,7 @@ import { Sfx } from './audio.ts';
 import { Game } from './game/controller.ts';
 import { LEVELS } from './game/levels.ts';
 import { Wall } from './render/wall.ts';
+import { type Quality, SETTINGS, detectQuality } from './quality.ts';
 
 // URL controls:
 //   ?t=<seconds>   run the (deterministic) simulation to that time and freeze it
@@ -15,9 +16,10 @@ const levelParam = q.has('level') ? Math.min(LEVELS.length, Math.max(1, Number(q
 const view = q.get('view') ?? 'wall';
 
 const canvas = document.getElementById('wall') as HTMLCanvasElement;
-const wall = new Wall(canvas);
+let quality: Quality = detectQuality();
+const wall = new Wall(canvas, quality);
 const sfx = new Sfx();
-const game = new Game(wall, sfx);
+const game = new Game(wall, sfx, SETTINGS[quality]);
 if (view === 'close' || view === 'raking') wall.view = view;
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -114,6 +116,21 @@ window.addEventListener('keydown', (e) => {
   game.key(e.key);
 });
 window.addEventListener('resize', () => wall.resize());
+// keep the wall clear of the HUD: tell the camera how far down the HUD reaches
+const textBox = (el: Element) => {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  return r.getBoundingClientRect();
+};
+const reserveHud = () => {
+  const parts = ['#hud h1', '#hint', '#bar'].map((q) => textBox(document.querySelector(q)!));
+  const bottom = Math.max(...parts.map((b) => b.bottom)) + 10;
+  const right = Math.max(...parts.map((b) => b.right)) + 14;
+  wall.setReserve(bottom / window.innerHeight, right / window.innerWidth);
+};
+new ResizeObserver(reserveHud).observe($('hud'));
+window.addEventListener('resize', reserveHud);
+reserveHud();
 
 $('undo').addEventListener('click', () => game.undo());
 $('hintb').addEventListener('click', () => game.showHint());
@@ -133,7 +150,7 @@ let last = performance.now();
 let slow = 0;
 let quick = 0;
 let wallTime = 0;
-const stats = { fps: 0, frames: 0, t0: performance.now(), scale: 1 };
+const stats = { fps: 0, frames: 0, t0: performance.now(), scale: 1, quality: quality as string };
 (window as unknown as { __stats: typeof stats }).__stats = stats;
 
 function tick(now: number): void {
@@ -158,6 +175,12 @@ function tick(now: number): void {
   if (slow > 24 && wall.scale > 0.5) {
     wall.setScale(Math.max(0.5, wall.scale * 0.85));
     slow = 0;
+  } else if (slow > 24 && quality === 'high') {
+    // still too slow at half resolution: drop to the low level of detail
+    quality = 'low';
+    wall.setQuality(quality);
+    game.setQuality(SETTINGS[quality]);
+    stats.quality = quality;
   } else if (quick > 600 && wall.scale < 1) {
     wall.setScale(Math.min(1, wall.scale * 1.1));
     quick = 0;
