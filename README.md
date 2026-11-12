@@ -2,7 +2,9 @@
 
 A puzzle game played on a wall of hand-painted tin-glazed tiles, cobalt blue on white, in the tradition of Portuguese and Dutch tiles. Turn and swap the tiles until the water runs from the spring to the sea. Then a painted sailing boat sets off along your river, and the painted world wakes as it passes.
 
-![The full wall, solved: the boat has reached the sea and a sea creature rolls through the border](docs/hero.jpg)
+**[Play it live at tile-river.vercel.app](https://tile-river.vercel.app/)**
+
+[![The full wall, solved: the boat has reached the sea and a sea creature rolls through the border](docs/hero.jpg)](https://tile-river.vercel.app/)
 
 Everything you see is generated in code. Every tile face is painted stroke by stroke by a brush engine with pressure and pigment load. The glaze, crazing, pinholes, chips and grout come from shaders and generated maps, with no image files. The production build is a single standalone `index.html`.
 
