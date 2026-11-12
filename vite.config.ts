@@ -3,6 +3,8 @@ import { defineConfig, type Plugin } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 
 // In the build the favicon becomes a data: URI, so dist/index.html stays one file.
+// favicon.svg is also written beside it, with public/favicon.ico and
+// public/apple-touch-icon.png, for anything that asks the server directly.
 function inlineFavicon(): Plugin {
   return {
     name: 'inline-favicon',
@@ -14,6 +16,9 @@ function inlineFavicon(): Plugin {
         const uri = 'data:image/svg+xml,' + encodeURIComponent(svg.replace(/\s+/g, ' ').trim());
         return html.replace('href="/favicon.svg"', `href="${uri}"`);
       },
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'favicon.svg', source: readFileSync(new URL('./favicon.svg', import.meta.url)) });
     },
   };
 }

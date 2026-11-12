@@ -101,7 +101,8 @@ The look follows a fixed set of rules for the medium:
 
 ```text
 index.html              entry, HUD, fonts
-favicon.svg             tab icon (inlined into the build)
+favicon.svg             tab icon (inlined into the build, also served as a file)
+public/                 favicon.ico and apple-touch-icon.png, made by scripts/make-icons.mjs
 vite.config.ts          single-file build
 src/main.ts             boot, URL parameters, input, frame loop, dynamic resolution
 src/game/               board rules, levels, solver (hint and attract), game controller
